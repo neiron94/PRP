@@ -17,12 +17,13 @@ enum {
 int read_line(char*, size_t*);
 _Bool is_letter(char);
 void clean_line(char**);
+char* reduce(char*, size_t);
 
 
 int main(int argc, char *argv[])
 {
   size_t encoded_len = START_LENGTH;
-  char *encoded_str = (char*)malloc(encoded_len);
+  char *encoded_str = malloc(sizeof(char) * encoded_len);
   if (!encoded_str)
     return ERROR_MEMORY;
   int function_ret = read_line(encoded_str, &encoded_len);
@@ -36,7 +37,7 @@ int main(int argc, char *argv[])
   }
 
   size_t eavesdropped_len = START_LENGTH;
-  char *eavesdropped_str = (char*)malloc(eavesdropped_len);
+  char *eavesdropped_str = malloc(sizeof(char) * eavesdropped_len);
   if (!eavesdropped_str)
     return ERROR_MEMORY;
   function_ret = read_line(eavesdropped_str, &eavesdropped_len);
@@ -76,7 +77,7 @@ int read_line(char *string, size_t *length) {
     
     if (current_index >= *length) {
       *length *= 2;
-      char* tmp = (char*)realloc(string, *length);
+      char *tmp = realloc(string, sizeof(char) * (*length));
       if (!tmp) {
         clean_line(&string);
         return ERROR_MEMORY;
@@ -88,8 +89,11 @@ int read_line(char *string, size_t *length) {
     current_index++;
   }
 
-  *length = current_index + 1;
-  char* tmp = (char*)realloc(string, *length);
+  *length = current_index;
+
+  string = reduce(string, (*length) + 1);
+  
+  char *tmp = realloc(string, (*length) + 1);
   if (!tmp) {
     clean_line(&string);
     return ERROR_MEMORY;
@@ -100,7 +104,11 @@ int read_line(char *string, size_t *length) {
   return ERROR_OK;
 }
 
-
+char* reduce(char* string, size_t len) {
+  char *tmp = realloc(string, len);
+  
+  return tmp;
+}
 _Bool is_letter(char c) {
   return ((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) ? TRUE : FALSE;
 }
@@ -110,3 +118,4 @@ void clean_line(char** string) {
   free(*string);
   *string = NULL;
 }
+
