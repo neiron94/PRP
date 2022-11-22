@@ -32,7 +32,7 @@ void clean_matrix(Matrix*, int);
 void clean_operators(char**);
 int calculate(Matrix*, Matrix*, char*, int);
 void matrix_multiply(Matrix, Matrix, Matrix*);
-void matrix_add(Matrix*, Matrix);
+void matrix_addition(Matrix*, Matrix);
 void matrix_subtraction(Matrix*, Matrix);
 void move_matrices(Matrix*, int, int);
 void move_operators(char*, int, int);
@@ -49,25 +49,28 @@ int main(int argc, char *argv[])
   int oper_count = 0; // number of operators
   char *operators = NULL; // array of operators
 
+  // Reading all input information
   ret = read_input(&matrices, &operators, &mat_count, &oper_count);
 
+  // Calculating the result of all operations
   Matrix result;
   result.values = NULL;
   if (ret == EXIT_SUCCESS)
     ret = calculate(&result, matrices, operators, oper_count);
 
+  // Printing the result
   if (ret == EXIT_SUCCESS)
     print_matrix(result);
 
-  // Cleaning memory (matrices and operators)
+  // Cleaning memory (matrices, operators and result)
   if (matrices)
     clean_matrices(&matrices, mat_count);
 
-  if (result.values)
-    clean_matrix(&result, result.rows);
-
   if (operators)
     clean_operators(&operators);
+
+  if (result.values)
+    clean_matrix(&result, result.rows);
 
   // Cheking of errors
   if (ret == ERROR_INPUT)
@@ -84,7 +87,7 @@ int read_input(Matrix **mtrxs, char **opers, int *mat_count, int *oper_count) {
 
   int ret = EXIT_SUCCESS; // variable for monitoring errors
 
-  // Allocate arrays of matrices and operators to MAX_LENGTH
+  // Allocating arrays of matrices and operators
   *mtrxs = (Matrix*)malloc(sizeof(Matrix) * MAX_LENGTH);
   // Checking of a successful allocation
   if (!(*mtrxs))
@@ -135,13 +138,9 @@ int read_input(Matrix **mtrxs, char **opers, int *mat_count, int *oper_count) {
     }
   }
 
+  // Reducing the sizes of arrays of matrices and operators
   if (ret == EXIT_SUCCESS)
     ret = reduce(mtrxs, opers, mat_count, oper_count);
-
-  if (ret != EXIT_SUCCESS) {
-    clean_matrices(mtrxs, *mat_count);
-    clean_operators(opers);
-  }
 
   return ret;
 }
@@ -261,47 +260,68 @@ int calculate(Matrix *result, Matrix *mtrxs, char *opers, int oper_count) {
 
   int ret = EXIT_SUCCESS;
 
+  // First iteration
   for (int i = 0; i < oper_count; i++) {
     if (opers[i] == MUL) {
 
+      // Checking, if multiplication is possible
       if (mtrxs[i].columns != mtrxs[i + 1].rows)
         return ERROR_INPUT;
       
+      // Preparation of the resulting matrix (result of current multiplication)
       Matrix tmp_matrix;
       tmp_matrix.rows = mtrxs[i].rows;
       tmp_matrix.columns = mtrxs[i + 1].columns;
       ret = allocate_values(&tmp_matrix);
+      // Checking of a successful allocation
       if (ret != EXIT_SUCCESS)
         return ret;
-      matrix_multiply(mtrxs[i], mtrxs[i + 1], &tmp_matrix);
 
+      // Multiplication of two matrices
+      matrix_multiply(mtrxs[i], mtrxs[i + 1], &tmp_matrix);
+      // Cleaning values of multiplied matrices
       clean_matrix(&mtrxs[i], mtrxs[i].rows);
       clean_matrix(&mtrxs[i + 1], mtrxs[i + 1].rows);
 
+      // Moving matrices to the left
       move_matrices(mtrxs, i + 1, oper_count);
+      // Inserting of resulting matrix to the related place
       mtrxs[i] = tmp_matrix;
-      move_operators(opers, i + 1, oper_count - 1);
 
+      // Moving operators to the left
+      move_operators(opers, i + 1, oper_count - 1);
+      // Now we have less operators to go through,
+      // so we should to decrement their count and current i
       oper_count--;
       i--;
     }
   }
 
+  // Preparation of the resulting matrix (final result).
+  // Setting (copying) resulting matrix to the first matrix in the array.
   result->rows = mtrxs[0].rows;
   result->columns = mtrxs[0].columns;
+
   ret = allocate_values(result);
+  // Checking of a successful allocation
   if (ret != EXIT_SUCCESS)
     return ret;
+  
   for (int i = 0; i < result->rows; i++)
     for (int j = 0; j < result->columns; j++)
       result->values[i][j] = mtrxs[0].values[i][j];
-
+  
+  // Second iteration
   for (int i = 0; i < oper_count; i++) {
-    if (result->rows != mtrxs[i + 1].rows || result->columns != mtrxs[i + 1].columns)
+
+    // Checking, if addition/subtraction is possible
+    if (result->rows != mtrxs[i + 1].rows || 
+    result->columns != mtrxs[i + 1].columns)
       return ERROR_INPUT;
 
+    // Making an operation
     if (opers[i] == ADD)
-      matrix_add(result, mtrxs[i + 1]);
+      matrix_addition(result, mtrxs[i + 1]);
     else 
       matrix_subtraction(result, mtrxs[i + 1]);
   }
@@ -311,6 +331,7 @@ int calculate(Matrix *result, Matrix *mtrxs, char *opers, int oper_count) {
 
 
 void matrix_multiply(Matrix left, Matrix right, Matrix *result) {
+  /* Multiplies two matrices */
 
   for (int i = 0; i < result->rows; i++) {
     for (int j = 0; j < result->columns; j++) {
@@ -323,7 +344,8 @@ void matrix_multiply(Matrix left, Matrix right, Matrix *result) {
 }
 
 
-void matrix_add(Matrix *left, Matrix right) {
+void matrix_addition(Matrix *left, Matrix right) {
+  /* Adds two matricies */
 
   for (int i = 0; i < left->rows; i++)
     for (int j = 0; j < left->columns; j++)
@@ -332,6 +354,7 @@ void matrix_add(Matrix *left, Matrix right) {
 
 
 void matrix_subtraction(Matrix *left, Matrix right) {
+  /* Subtracts two matrices */
 
   for (int i = 0; i < left->rows; i++)
     for (int j = 0; j < left->columns; j++)
@@ -340,15 +363,19 @@ void matrix_subtraction(Matrix *left, Matrix right) {
 
 
 void move_matrices(Matrix *mtrxs, int start_i, int end_i) {
+  /* Moves matrices in the array to the right. Starts from start_i
+    and ends on end_i. Also sets values of the last matrix to NULL. */
 
-  for (int i = start_i; i <= end_i; i++) {
+  for (int i = start_i; i <= end_i; i++)
     mtrxs[i - 1] = mtrxs[i];
-    mtrxs[i].values = NULL;
-  }
+
+  mtrxs[end_i].values = NULL;
 }
 
 
 void move_operators(char *opers, int start_i, int end_i) {
+  /* Moves operators in the array to the right. Starts from start_i
+    and ends on end_i. */
 
   for (int i = start_i; i <= end_i; i++)
     opers[i - 1] = opers[i];
