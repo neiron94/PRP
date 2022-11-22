@@ -22,13 +22,14 @@ typedef struct Matrix {
 } Matrix;
 
 
-void read_input(Matrix**, char**, int*, int*, int*);
+int read_input(Matrix**, char**, int*, int*);
+int read_sizes(Matrix*);
+int allocate_values(Matrix*);
+int read_values(Matrix*);
+int reduce(Matrix**, char**, int*, int*);
 void clean_matrices(Matrix**, int);
-void clean_operators(char**);
-void read_sizes(Matrix*, int*);
-void allocate_values(Matrix*, int*);
 void clean_matrix(Matrix*, int);
-void read_values(Matrix*, int*);
+void clean_operators(char**);
 
 
 int main(int argc, char *argv[])
@@ -41,7 +42,7 @@ int main(int argc, char *argv[])
   int oper_count = 0; // number of operators
   char *operators = NULL; // array of operators
 
-  read_input(&matrices, &operators, &mat_count, &oper_count, &ret);
+  ret = read_input(&matrices, &operators, &mat_count, &oper_count);
 
   //TODO
 
@@ -62,92 +63,148 @@ int main(int argc, char *argv[])
 }
 
 
-void read_input(Matrix **mtrxs, char **opers, int *mat_count, int *oper_count, int *ret) {
+int read_input(Matrix **mtrxs, char **opers, int *mat_count, int *oper_count) {
+  /* Reads all input (matrices and operators) */
 
+  int ret = EXIT_SUCCESS; // variable for monitoring errors
+
+  // Allocate arrays of matrices and operators to MAX_LENGTH
   *mtrxs = (Matrix*)malloc(sizeof(Matrix) * MAX_LENGTH);
-  if (!(*mtrxs)) {
-    *ret = ERROR_MEMORY;
-    return;
+  // Checking of a successful allocation
+  if (!(*mtrxs))
+    ret = ERROR_MEMORY;
+
+  if (ret == EXIT_SUCCESS) {
+    *opers = (char*)malloc(sizeof(char) * MAX_LENGTH);
+    // Checking of a successful allocation
+    if (!(*opers))
+      ret = ERROR_MEMORY;
   }
 
-  *opers = (char*)malloc(sizeof(char) * MAX_LENGTH);
-  if (!(*opers)) {
-    *ret = ERROR_MEMORY;
-    return;
-  }
+  // Reading input
+  if (ret == EXIT_SUCCESS) {
+    while (TRUE) {
 
-  while (TRUE) {
-    read_sizes(&(*mtrxs)[*mat_count], ret);
-    if (*ret != EXIT_SUCCESS) {
-      clean_matrices(mtrxs, *mat_count);
-      clean_operators(opers);
-      return;
-    }
+      // Filling current matrix
+      Matrix *current_matrix = &(*mtrxs)[*mat_count]; // current matrix to fill
 
-    allocate_values(&(*mtrxs)[*mat_count], ret);
-    if (*ret != EXIT_SUCCESS) {
-      clean_matrices(mtrxs, *mat_count);
-      clean_operators(opers);
-      return;
-    }
+      ret = read_sizes(current_matrix);
+      if (ret != EXIT_SUCCESS)
+        break;
 
-    read_values(&(*mtrxs)[*mat_count], ret);
-    if (*ret != EXIT_SUCCESS) {
-      clean_matrices(mtrxs, *mat_count);
-      clean_operators(opers);
-      return;
-    }
+      ret = allocate_values(current_matrix);
+      if (ret != EXIT_SUCCESS)
+        break;
 
-    (*mat_count)++;
+      ret = read_values(current_matrix);
+      if (ret != EXIT_SUCCESS)
+        break;
 
-    getchar();
-    char operator;
-    if (scanf("%c", &operator) == EOF)
-      break;
+      (*mat_count)++;
 
-    if (operator == ADD || operator == SUB || operator == MUL) {
-      (*opers)[*oper_count] = operator;
-      (*oper_count)++;
-    }
-    else {
-      *ret = ERROR_INPUT;
-      clean_matrices(mtrxs, *mat_count);
-      clean_operators(opers);
-      return;
+      // Reading current operator (or exit the loop)
+      getchar();  // eats '\n' after the last row of matrix values
+
+      char operator;
+      if (scanf("%c", &operator) == EOF)  // exit the loop, if EOF
+        break;
+
+      if (operator == ADD || operator == SUB || operator == MUL) {
+        (*opers)[*oper_count] = operator;
+        (*oper_count)++;
+      }
+      else {
+        // Neither '+', nor '-', nor '*'
+        ret = ERROR_INPUT;
+        break;
+      }
     }
   }
 
-  Matrix *tmp_mat = realloc(*mtrxs, sizeof(Matrix) * (*mat_count));
-  if (!tmp_mat) {
-    *ret = ERROR_MEMORY;
+  if (ret == EXIT_SUCCESS)
+    ret = reduce(mtrxs, opers, mat_count, oper_count);
+
+  if (ret != EXIT_SUCCESS) {
     clean_matrices(mtrxs, *mat_count);
     clean_operators(opers);
-    return;
   }
-  *mtrxs = tmp_mat;
 
-  char *tmp_oper = realloc(*opers, sizeof(char) * (*oper_count));
-  if (!tmp_oper) {
-    *ret = ERROR_MEMORY;
-    clean_matrices(mtrxs, *mat_count);
-    clean_operators(opers);
-    return;
-  }
-  *opers = tmp_oper;
+  return ret;
 }
 
 
-void clean_operators(char **operators) {
-  if (!operators)
-    return;
+int read_sizes(Matrix *matrix) {
+  /* Reads sizes of the matrix */
 
-  free(*operators);
-  *operators = NULL;
+  if (scanf("%d", &matrix->rows) != 1 || scanf("%d", &matrix->columns) != 1)
+    return ERROR_INPUT;
+
+  return EXIT_SUCCESS;
+}
+
+
+int allocate_values(Matrix *matrix) {
+  /* Allocates memory for values of the matrix */
+
+  matrix->values = (int**)malloc(sizeof(int*) * matrix->rows);
+  // Checking of a successful allocation
+  if(!matrix->values)
+    return ERROR_MEMORY;
+
+  for (int i = 0; i < matrix->rows; i++) {
+    matrix->values[i] = (int*)malloc(sizeof(int) * matrix->columns);
+    // Checking of a successful allocation
+    if(!matrix->values[i]) {
+      clean_matrix(matrix, i);
+      return ERROR_MEMORY;
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
+
+
+int read_values(Matrix* matrix) {
+  /* Reads values of the matrix */
+
+  for (int i = 0; i < matrix->rows; i++) {
+    for (int j = 0; j < matrix->columns; j++) {
+      if (scanf("%d", &matrix->values[i][j]) != 1) {
+        clean_matrix(matrix, matrix->rows);
+        return ERROR_INPUT;
+      }
+    }
+  }
+
+  return EXIT_SUCCESS;
+}
+
+
+int reduce(Matrix **mtrxs, char **opers, int *mat_count, int *oper_count) {
+  /* Reduces arrays of matrices and operators */
+
+  Matrix *tmp_mat = realloc(*mtrxs, sizeof(Matrix) * (*mat_count));
+  // Checking of a successful reallocation
+  if (!tmp_mat)
+   return ERROR_MEMORY;
+ 
+  *mtrxs = tmp_mat;
+  
+  char *tmp_oper = realloc(*opers, sizeof(char) * (*oper_count));
+  // Checking of a successful allocation
+  if (!tmp_oper)
+    return ERROR_MEMORY;
+
+  *opers = tmp_oper;
+
+  return EXIT_SUCCESS;
 }
 
 
 void clean_matrices(Matrix **matrices, int count) {
-  if (!matrices && !(*matrices))
+  /* Cleans array of matrices and sets pointer to NULL */
+
+  if (!(*matrices))
     return;
 
   for (int i = 0; i < count; i++)
@@ -159,7 +216,7 @@ void clean_matrices(Matrix **matrices, int count) {
 
 
 void clean_matrix(Matrix* matrix, int rows) {
-/* Function cleans values of the matrix */
+  /* Cleans values of the matrix and sets pointer to NULL */
 
   if (!matrix->values)
     return;
@@ -172,45 +229,12 @@ void clean_matrix(Matrix* matrix, int rows) {
 }
 
 
-void read_sizes(Matrix *matrix, int *ret) {
-  /* Function reads sizes of the matrix */
+void clean_operators(char **operators) {
+  /* Cleans array of operators and sets pointer to NULL */
 
-  if (scanf("%d", &matrix->rows) != 1 || scanf("%d", &matrix->columns) != 1)
-    *ret = ERROR_INPUT;
-}
-
-
-void allocate_values(Matrix *matrix, int *ret) {
-  /* Function allocaes memory for values of the matrix */
-
-  matrix->values = (int**)malloc(sizeof(int*) * matrix->rows);
-  
-  if(!matrix->values) {
-    *ret = ERROR_MEMORY;
+  if (!(*operators))
     return;
-  }
 
-  for (int i = 0; i < matrix->rows; i++) {
-    matrix->values[i] = (int*)malloc(sizeof(int) * matrix->columns);
-    if(!matrix->values[i]) {
-      *ret = ERROR_MEMORY;
-      clean_matrix(matrix, i);
-      return;
-    }
-  }
-}
-
-
-void read_values(Matrix* matrix, int* ret) {
-/* Function reads values of the matrix */
-
-  for (int i = 0; i < matrix->rows; i++) {
-    for (int j = 0; j < matrix->columns; j++) {
-      if (scanf("%d", &matrix->values[i][j]) != 1) {
-        *ret = ERROR_INPUT;
-        clean_matrix(matrix, matrix->rows);
-        return;
-      }
-    }
-  }
+  free(*operators);
+  *operators = NULL;
 }
