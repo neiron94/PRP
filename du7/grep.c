@@ -16,9 +16,9 @@ enum {
 
 _Bool my_strcmp(const char*, const char*);
 int my_strlen(const char*);
-int alloc_and_fill(char***, char***, int*, FILE*);
-int common_searching(FILE*, const char*, char***, int*, char**, int);
-int regular_searching(FILE*, const char*, char***, int*, char**, int);
+int searching(char***, int*, const char*, FILE*, _Bool);
+_Bool find_common(char*, const char*, int*, int*);
+_Bool find_regular(char*, const char*, int*, int*);
 void clean_lines(char***, int);
 
 
@@ -60,24 +60,12 @@ int main(int argc, const char *argv[]) {
       ret = ERROR_FILE;
   }
 
-  // Allocate memory for lines and result
-  char **result = NULL;
   int res_count = 0;
-  char **lines = NULL;
-  int lines_count = 0;
-
-  if (ret == EXIT_SUCCESS)
-    ret = alloc_and_fill(&result, &lines, &lines_count, file);
-
-
-  //TODO - check allocation and cleaning with valgrind
+  char** result = NULL;
 
   // Searching
   if (ret == EXIT_SUCCESS)
-    if (!is_regular)
-      ret = common_searching(file, pattern, &result, &res_count, lines, lines_count);
-    else
-      ret = regular_searching(file, pattern, &result, &res_count, lines, lines_count);
+    ret = searching(&result, &res_count, pattern, file, is_regular);
 
 
   // TODO - after searching
@@ -89,16 +77,13 @@ int main(int argc, const char *argv[]) {
 
   if (result)
     clean_lines(&result, res_count);
-
-  if (lines)
-    clean_lines(&lines, lines_count);
   
   // Checking of errors
   if (ret == ERROR_ARGS)
     fprintf(stderr, "Error: Invalid number of arguments!\n");
   else if (ret == ERROR_FILE)
     fprintf(stderr, "Error: File cannot be open!\n");
-  else if (ret = ERROR_MEMORY)
+  else if (ret == ERROR_MEMORY)
     fprintf(stderr, "Error: Memory not allocated/reallocated!\n");
 
   return ret;
@@ -132,43 +117,77 @@ int my_strlen(const char *string) {
 }
 
 
-int alloc_and_fill(char ***result, char ***lines, int *lines_count, FILE *file) {
-  /* Allocates memory for result and lines. Also fills lines. */
+int searching(char ***result, int *res_count, const char *pattern, FILE *file, _Bool is_regular) {
+  /* Function finds lines with pattern */
+
+  //TODO - check this algorithm
 
   int ret = EXIT_SUCCESS;
 
-  // Allocation
   *result = (char**)malloc(MAX_SIZE * sizeof(char*));
-  *lines = (char**)malloc(MAX_SIZE * sizeof(char*));
-  if (!(*result) || !(*lines))
+  if (!(*result))
     ret = ERROR_MEMORY;
 
-  // Read all lines in the file
-  if (ret == EXIT_SUCCESS)
-    for (int i = 0; fgets((*lines)[i], MAX_SIZE, file); i++)
-      (*lines_count)++;
-  
-  // Reduce lines
+  // Find paterns
   if (ret == EXIT_SUCCESS) {
-    char **tmp = (char**)realloc(*lines, (*lines_count) * sizeof(char*));
-    if (!tmp)
-      ret = ERROR_MEMORY;
-    
-    if (ret == EXIT_SUCCESS)
-      *lines = tmp;
+    char *current_line = (char*)malloc(MAX_SIZE * sizeof(char));
+    while (fgets(current_line, MAX_SIZE, file)) {
+      int a = 0, b = 0; // empty variables, just for find_pattern
+      if ((!is_regular && find_common(current_line, pattern, &a, &b)) || find_regular(current_line, pattern, &a, &b)) {
+        *result[*res_count] = current_line;
+        (*res_count)++;
+      }
+      else
+        free(current_line);
+    }
   }
 
   return ret;
 }
 
 
-int common_searching(FILE *file, const char *pattern, char ***result, int *res_count, char **lines, int lines_count) {
-  // TODO - common searching
+_Bool find_common(char *line, const char *pattern, int *start, int *end) {
+  /* Decides, is line has pattern. Starts searching from start.
+    Return start and end of pattern (indexes). */
+
+  //TODO - check this algorithm
+
+  int pat_len = my_strlen(pattern);
+
+  for (int i = *start; line[i] != '\0'; i++) {
+    if (line[i] == pattern[0]) {
+      int matches = 1;
+      int new_start = i;
+      i++;
+      for (; ; i++) {
+        if (matches == pat_len) {
+          *start = new_start;
+          *end = i - 1;
+          return TRUE;
+        }
+
+        if (line[i] == '\0')
+          return FALSE;
+
+        if (line[i] == pattern[matches])
+          matches++;
+        else
+          break;
+      }
+    }
+  }
+
+  return FALSE;
 }
 
 
-int regular_searching(FILE *file, const char *pattern, char ***result, int *res_count, char **lines, int lines_count) {
-  // TODO - regular searching
+_Bool find_regular(char *line, const char *pattern, int *start, int *end) {
+  
+
+  //TODO - write this algorithm
+
+
+  return FALSE;
 }
 
 
@@ -179,7 +198,8 @@ void clean_lines(char ***lines, int count) {
     return;
 
   for (int i = 0; i < count; i++)
-    free((*lines)[i]);
+    free(*lines[i]);
 
+  free(*lines);
   *lines = NULL;
 }
