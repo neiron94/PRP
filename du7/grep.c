@@ -17,6 +17,7 @@ enum {
 _Bool my_strcmp(const char*, const char*);
 int my_strlen(const char*);
 int searching(char***, int*, const char*, FILE*, _Bool);
+_Bool find_pattern(char*, const char*, int*, int*, _Bool);
 _Bool find_common(char*, const char*, int*, int*);
 _Bool find_regular(char*, const char*, int*, int*);
 void clean_lines(char***, int);
@@ -29,28 +30,32 @@ int main(int argc, const char *argv[]) {
   _Bool is_regular = FALSE;
   _Bool is_colored = FALSE;
 
-  const char *pattern = NULL;
-  const char *file_name = NULL;
+  // const char *pattern = NULL;
+  // const char *file_name = NULL;
+
+  // DEBUG
+  const char *pattern = "Mem";
+  const char *file_name = "data/man/pub01-m.in";
 
   // Checking arguments
-  if (ret == EXIT_SUCCESS) {
-    for (int i = 1; i < argc; i++) {
-      if (my_strcmp(argv[i], "-E") && !pattern && !file_name)
-        is_regular = TRUE;
-      else if (my_strcmp(argv[i], "--color=always") && !pattern && !file_name)
-        is_colored = TRUE;
-      else if (!pattern)
-        pattern = argv[i];
-      else if (!file_name)
-        file_name = argv[i];
-      else {  // excess arguments
-        ret = ERROR_ARGS;
-        break;
-      }
-    }
-    if (!pattern)
-      ret = ERROR_ARGS;
-  }
+  // if (ret == EXIT_SUCCESS) {
+  //   for (int i = 1; i < argc; i++) {
+  //     if (my_strcmp(argv[i], "-E") && !pattern && !file_name)
+  //       is_regular = TRUE;
+  //     else if (my_strcmp(argv[i], "--color=always") && !pattern && !file_name)
+  //       is_colored = TRUE;
+  //     else if (!pattern)
+  //       pattern = argv[i];
+  //     else if (!file_name)
+  //       file_name = argv[i];
+  //     else {  // excess arguments
+  //       ret = ERROR_ARGS;
+  //       break;
+  //     }
+  //   }
+  //   if (!pattern)
+  //     ret = ERROR_ARGS;
+  // }
 
   // Open file
   FILE *file = NULL;
@@ -124,55 +129,83 @@ int searching(char ***result, int *res_count, const char *pattern, FILE *file, _
 
   int ret = EXIT_SUCCESS;
 
+  // Allocate memory for result
   *result = (char**)malloc(MAX_SIZE * sizeof(char*));
   if (!(*result))
     ret = ERROR_MEMORY;
 
-  // Find paterns
+  // Allocate memory for current line
+  char *current_line = NULL;
   if (ret == EXIT_SUCCESS) {
-    char *current_line = (char*)malloc(MAX_SIZE * sizeof(char));
+    current_line = (char*)malloc(MAX_SIZE * sizeof(char));
+    if (!current_line)
+      ret = ERROR_MEMORY;
+  }
+
+  // Assign result
+  if (ret == EXIT_SUCCESS) {
     while (fgets(current_line, MAX_SIZE, file)) {
-      int a = 0, b = 0; // empty variables, just for find_pattern
-      if ((!is_regular && find_common(current_line, pattern, &a, &b)) || find_regular(current_line, pattern, &a, &b)) {
+      int a = 0, b = 0; // empty variables, just for sending in find_pattern
+      if (find_pattern(current_line, pattern, &a, &b, is_regular)) {
         *result[*res_count] = current_line;
+        printf("%s\n", *result[*res_count]);  // DEBUG
+        printf("Pattern starts at %d and ends at %d\n", a, b);  // DEBUG
         (*res_count)++;
       }
-      else
-        free(current_line);
     }
   }
+  
+  if (current_line)
+    free(current_line);
+
+  return ret;
+}
+
+
+_Bool find_pattern(char *line, const char *pattern, int *start, int *end, _Bool is_regular) {
+  /* Decides, if line has pattern, returns start and end of pattern (indexes) */
+
+  _Bool ret = FALSE;
+  
+  if(!is_regular)
+    ret = find_common(line, pattern, start, end);
+  else
+    ret = find_regular(line, pattern, start, end);
 
   return ret;
 }
 
 
 _Bool find_common(char *line, const char *pattern, int *start, int *end) {
-  /* Decides, is line has pattern. Starts searching from start.
-    Return start and end of pattern (indexes). */
+  /* Nonregular part of find_pattern function */
 
-  //TODO - check this algorithm
-
+  int new_start = 0;  // variable to insert in 'start' before exit
+  int matches = 0;  // number of matches with pattern
   int pat_len = my_strlen(pattern);
+  int line_len = my_strlen(line);
 
-  for (int i = *start; line[i] != '\0'; i++) {
+  // Start searching from 'start'
+  for (int i = *start; i < line_len; i++) {
     if (line[i] == pattern[0]) {
-      int matches = 1;
-      int new_start = i;
+      new_start = i;
+      matches++;
       i++;
-      for (; ; i++) {
-        if (matches == pat_len) {
-          *start = new_start;
-          *end = i - 1;
-          return TRUE;
-        }
 
-        if (line[i] == '\0')
-          return FALSE;
-
+      // Try to find all pattern's characters
+      for (; i < line_len && matches != pat_len; i++) {
         if (line[i] == pattern[matches])
           matches++;
-        else
+        else {
+          matches = 0;
           break;
+        }
+      }
+
+      // If pattern is found
+      if (matches == pat_len) {
+        *start = new_start;
+        *end = i;
+        return TRUE;
       }
     }
   }
@@ -182,7 +215,7 @@ _Bool find_common(char *line, const char *pattern, int *start, int *end) {
 
 
 _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
-  
+  /* Regular part of find_pattern function */
 
   //TODO - write this algorithm
 
