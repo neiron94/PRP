@@ -3,7 +3,8 @@
 
 #define FALSE 0
 #define TRUE 1
-#define MAX_SIZE 100
+#define START_SIZE 100
+#define ESC 27
 
 
 enum {
@@ -16,11 +17,17 @@ enum {
 
 _Bool my_strcmp(const char*, const char*);
 int my_strlen(const char*);
-int searching(char***, int*, const char*, FILE*, _Bool);
+char** read_file(FILE*, int*, int*);
+char* read_line(FILE*, int*);
+char** searching(int*, int*, char**, int, const char*, _Bool);
 _Bool find_pattern(char*, const char*, int*, int*, _Bool);
 _Bool find_common(char*, const char*, int*, int*);
 _Bool find_regular(char*, const char*, int*, int*);
-void clean_lines(char***, int);
+void reg_exp(char*, char, char, int*, int*, int*, int*);
+_Bool is_expression(char);
+void print_result(char**, int, const char*, _Bool, _Bool);
+void print_colored(char*, const char*, _Bool);
+void clean_lines(char**, int);
 
 
 int main(int argc, const char *argv[]) {
@@ -30,32 +37,28 @@ int main(int argc, const char *argv[]) {
   _Bool is_regular = FALSE;
   _Bool is_colored = FALSE;
 
-  // const char *pattern = NULL;
-  // const char *file_name = NULL;
-
-  // DEBUG
-  const char *pattern = "Mem";
-  const char *file_name = "data/man/pub01-m.in";
-
+  const char *pattern = NULL;
+  const char *file_name = NULL;
+  
   // Checking arguments
-  // if (ret == EXIT_SUCCESS) {
-  //   for (int i = 1; i < argc; i++) {
-  //     if (my_strcmp(argv[i], "-E") && !pattern && !file_name)
-  //       is_regular = TRUE;
-  //     else if (my_strcmp(argv[i], "--color=always") && !pattern && !file_name)
-  //       is_colored = TRUE;
-  //     else if (!pattern)
-  //       pattern = argv[i];
-  //     else if (!file_name)
-  //       file_name = argv[i];
-  //     else {  // excess arguments
-  //       ret = ERROR_ARGS;
-  //       break;
-  //     }
-  //   }
-  //   if (!pattern)
-  //     ret = ERROR_ARGS;
-  // }
+  if (ret == EXIT_SUCCESS) {
+    for (int i = 1; i < argc; i++) {
+      if (my_strcmp(argv[i], "-E") && !pattern && !file_name)
+        is_regular = TRUE;
+      else if (my_strcmp(argv[i], "--color=always") && !pattern && !file_name)
+        is_colored = TRUE;
+      else if (!pattern)
+        pattern = argv[i];
+      else if (!file_name)
+        file_name = argv[i];
+      else {  // excess arguments
+        ret = ERROR_ARGS;
+        break;
+      }
+    }
+    if (!pattern)
+      ret = ERROR_ARGS;
+  }
 
   // Open file
   FILE *file = NULL;
@@ -65,23 +68,40 @@ int main(int argc, const char *argv[]) {
       ret = ERROR_FILE;
   }
 
-  int res_count = 0;
-  char** result = NULL;
+  // Read lines from file and close it
+  char** lines = NULL;
+  int lines_count = 0;
+  lines = read_file(file, &lines_count, &ret);
 
-  // Searching
-  if (ret == EXIT_SUCCESS)
-    ret = searching(&result, &res_count, pattern, file, is_regular);
-
-
-  // TODO - after searching
-
-
-  // Free allocated memory
   if (file)
     fclose(file);
 
-  if (result)
-    clean_lines(&result, res_count);
+  // Searching
+  int res_count = 0;
+  char** result = NULL;
+  
+  if (ret == EXIT_SUCCESS)
+    result = searching(&ret, &res_count, lines, lines_count, pattern, is_regular);
+
+  // Free allocated memory
+  if (lines) {
+    clean_lines(lines, lines_count);
+    lines = NULL;
+  }
+
+  // Case of empty result
+  if (ret == EXIT_SUCCESS && res_count == 0)
+    ret = EXIT_EMPTY;
+
+  // Print result
+  if (ret == EXIT_SUCCESS)
+    print_result(result, res_count, pattern, is_colored, is_regular);
+
+  // Free allocated memory
+  if (result) {
+    clean_lines(result, res_count);
+    result = NULL;
+  }
   
   // Checking of errors
   if (ret == ERROR_ARGS)
@@ -122,43 +142,112 @@ int my_strlen(const char *string) {
 }
 
 
-int searching(char ***result, int *res_count, const char *pattern, FILE *file, _Bool is_regular) {
-  /* Function finds lines with pattern */
+char** read_file(FILE *file, int *count, int *ret) {
+  /* Reads all lines from file */
 
-  //TODO - check this algorithm
+    int size = START_SIZE;
 
-  int ret = EXIT_SUCCESS;
+    char **lines = (char**)malloc(size * sizeof(char*));
+    if (!lines)
+      *ret = ERROR_MEMORY;
 
-  // Allocate memory for result
-  *result = (char**)malloc(MAX_SIZE * sizeof(char*));
-  if (!(*result))
-    ret = ERROR_MEMORY;
+    if (*ret == EXIT_SUCCESS) {
+      while(!feof(file)) {
 
-  // Allocate memory for current line
-  char *current_line = NULL;
-  if (ret == EXIT_SUCCESS) {
-    current_line = (char*)malloc(MAX_SIZE * sizeof(char));
-    if (!current_line)
-      ret = ERROR_MEMORY;
+        // Increase allocated memory
+        if (*count == size) {
+          size *= 2;
+          char **tmp = realloc(lines, size * sizeof(char*));
+          if (!tmp) {
+            *ret = ERROR_MEMORY;
+            break;
+          }
+          lines = tmp;
+          
+        }
+
+        lines[*count] = read_line(file, ret);
+        if (*ret != EXIT_SUCCESS)
+          break;
+
+        (*count)++;
+      }
+    }
+
+    // Reduce amount of lines
+    char **tmp = realloc(lines, (*count) * sizeof(char*));
+    if (!tmp)
+      *ret = ERROR_MEMORY;
+    lines = tmp;
+
+    return lines;
+}
+
+
+char* read_line(FILE *file, int *ret) {
+  /* Reads one line from file */
+
+  int size = START_SIZE;
+  int count = 0;
+
+  char *line = (char*)malloc(size * sizeof(char));
+
+  while (!feof(file)) {
+
+    // Increase size of line
+    if (count == size) {
+      size *= 2;
+      char *tmp = realloc(line, size * sizeof(char));
+      if (!tmp) {
+        free(line);
+        *ret = ERROR_MEMORY;
+        break;
+      }
+      line = tmp;
+    }
+
+    line[count] = fgetc(file);
+    count++;
+    if (line[count - 1] == '\n')
+      break;
   }
 
-  // Assign result
-  if (ret == EXIT_SUCCESS) {
-    while (fgets(current_line, MAX_SIZE, file)) {
+  // Reduce size of line
+  char *tmp = realloc(line, (count + 1) * sizeof(char));
+  if (!tmp) {
+    free(line);
+    *ret = ERROR_MEMORY;
+  }
+  line = tmp;
+
+  line[count] = '\0';
+
+  return line;
+}
+
+
+char** searching(int *ret, int *res_count, char **lines, int lines_count, const char *pattern, _Bool is_regular) {
+  /* Function finds lines with pattern */
+
+  // Allocate memory for result
+  char **result = (char**)malloc(START_SIZE * sizeof(char*));
+  if (!result)
+    *ret = ERROR_MEMORY;
+
+  if (*ret == EXIT_SUCCESS) {
+    for (int i = 0; i < lines_count; i++) {
+
+      // Assign result
       int a = 0, b = 0; // empty variables, just for sending in find_pattern
-      if (find_pattern(current_line, pattern, &a, &b, is_regular)) {
-        *result[*res_count] = current_line;
-        printf("%s\n", *result[*res_count]);  // DEBUG
-        printf("Pattern starts at %d and ends at %d\n", a, b);  // DEBUG
+      if (find_pattern(lines[i], pattern, &a, &b, is_regular)) {
+        result[*res_count] = lines[i];
+        lines[i] = NULL;
         (*res_count)++;
       }
     }
   }
-  
-  if (current_line)
-    free(current_line);
 
-  return ret;
+  return result;
 }
 
 
@@ -179,7 +268,7 @@ _Bool find_pattern(char *line, const char *pattern, int *start, int *end, _Bool 
 _Bool find_common(char *line, const char *pattern, int *start, int *end) {
   /* Nonregular part of find_pattern function */
 
-  int new_start = 0;  // variable to insert in 'start' before exit
+  int new_start = -1;  // variable to insert in 'start' before exit
   int matches = 0;  // number of matches with pattern
   int pat_len = my_strlen(pattern);
   int line_len = my_strlen(line);
@@ -217,22 +306,131 @@ _Bool find_common(char *line, const char *pattern, int *start, int *end) {
 _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
   /* Regular part of find_pattern function */
 
-  //TODO - write this algorithm
+  int len_line = my_strlen(line);
+  int len_pat = my_strlen(pattern);
+  int new_start = -1;
+  int new_end = -1;
 
+  for (int i = *start, j = 0; i < len_line && j <= len_pat; i++) {
+    if (j == len_pat) {
+      *start = new_start;
+      *end = new_end;
+      return TRUE;
+    }
+
+    if (is_expression(pattern[j])) {
+      j++;
+      i--;
+    }
+    else if (j != len_pat - 1 && is_expression(pattern[j + 1])) {
+      reg_exp(line, pattern[j], pattern[j + 1], &i, &j, &new_start, &new_end);
+    }
+    else if (line[i] == pattern[j]) {
+      if (new_start == -1) {
+        new_start = i;
+        new_end = i + 1;
+      }
+      else {
+        new_end++;
+      }
+      j++;
+    }
+    else {
+      j = 0;
+      new_start = -1;
+      new_end = -1;
+    }
+  }
 
   return FALSE;
 }
 
 
-void clean_lines(char ***lines, int count) {
+void reg_exp(char *line, char ch, char exp, int *i, int *j, int *new_start, int *new_end) {
+  int count = 0;
+  if (*new_start == -1) {
+    *new_start = *i;
+    *new_end = *i;
+  }
+
+  for (; line[*i] == ch; (*i)++)
+    count++;
+
+  if ((exp == '?' && (count == 0 || count == 1)) ||
+  (exp == '+' && count >= 1) ||
+  (exp == '*' && count >= 0)) {
+    (*j)++;
+    (*i)--;
+    *new_end += count;
+  }
+  else {
+    *j = 0;
+    *new_start = -1;
+    *new_end = -1;
+  }
+}
+
+
+_Bool is_expression(char ch) {
+  if (ch == '?' || ch == '+' || ch == '*')
+    return TRUE;
+  else
+    return FALSE;
+}
+
+
+void print_result(char **result, int res_count, const char *pattern, _Bool is_colored, _Bool is_regular) {
+  /* Prints result */
+
+  for (int i = 0; i < res_count; i++) {
+    if (is_colored)
+      print_colored(result[i], pattern, is_regular);
+    else
+      printf("%s", result[i]);
+  }
+}
+
+
+void print_colored(char *line, const char *pattern, _Bool is_regular) {
+  /*Prints colored line */
+
+  int start = 0;
+  int end = 0;
+  int prev_end = 0;
+
+  while (find_pattern(line, pattern, &start, &end, is_regular)) {
+
+    // Before found text
+    for (int i = prev_end; i < start; i++)
+      printf("%c", line[i]);
+
+    // Colored text
+    printf("%c[01;31m%c[K", ESC, ESC);
+
+    for (int i = start; i < end; i++)
+      printf("%c", line[i]);
+
+    printf("%c[m%c[K", ESC, ESC);  
+
+    start = end;
+    prev_end = end;
+  }
+
+  // Rest of the text
+  int line_len = my_strlen(line);
+  for (int i = prev_end; i < line_len; i++)
+    printf("%c", line[i]);
+}
+
+
+void clean_lines(char **lines, int count) {
   /* Cleans array of strings */
 
-  if (!lines || !(*lines))
+  if (!lines)
     return;
 
   for (int i = 0; i < count; i++)
-    free(*lines[i]);
+    free(lines[i]);
 
-  free(*lines);
-  *lines = NULL;
+  free(lines);
 }

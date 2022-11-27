@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Thu Nov 24 23:27:49 2022
+# Make data base, printed on Sun Nov 27 11:07:28 2022
 
 # Variables
 
@@ -59,17 +59,17 @@ VSCODE_CODE_CACHE_PATH = /home/ales/.config/Code/CachedData/6261075646f055b99068
 # environment
 LANG = C
 # environment
-XAUTHORITY = /run/user/1000/.mutter-Xwaylandauth.G6UUV1
+XAUTHORITY = /run/user/1000/.mutter-Xwaylandauth.J5TIW1
 # default
 .LOADED := 
 # default
 .INCLUDE_DIRS = /usr/local/include /usr/include /usr/include
 # environment
-GNOME_TERMINAL_SERVICE = :1.114
+GNOME_TERMINAL_SERVICE = :1.124
 # makefile
 MAKEFLAGS = pqrR
 # environment
-DBUS_STARTER_ADDRESS = unix:path=/run/user/1000/bus,guid=c54336dc569f7314c7aa3765637fd499
+DBUS_STARTER_ADDRESS = unix:path=/run/user/1000/bus,guid=b39fcbe25ab7430a9e2ad91c63832dfc
 # makefile
 CURDIR := /home/ales/PRP/du/du7
 # environment
@@ -99,19 +99,19 @@ SNAP_REEXEC =
 # automatic
 @F = $(notdir $@)
 # environment
-VSCODE_PID = 4058
+VSCODE_PID = 4046
 # environment
 XDG_SESSION_TYPE = wayland
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # environment
-SESSION_MANAGER = local/Ales-UBUNTU:@/tmp/.ICE-unix/1762,unix/Ales-UBUNTU:/tmp/.ICE-unix/1762
+SESSION_MANAGER = local/Ales-UBUNTU:@/tmp/.ICE-unix/1669,unix/Ales-UBUNTU:/tmp/.ICE-unix/1669
 # automatic
 *F = $(notdir $*)
 # environment
 CHROME_DESKTOP = code-url-handler.desktop
 # environment
-DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1000/bus,guid=c54336dc569f7314c7aa3765637fd499
+DBUS_SESSION_BUS_ADDRESS = unix:path=/run/user/1000/bus,guid=b39fcbe25ab7430a9e2ad91c63832dfc
 # automatic
 <D = $(patsubst %/,%,$(dir $<))
 # environment
@@ -129,7 +129,7 @@ XMODIFIERS = @im=ibus
 # environment
 SHLVL = 1
 # environment
-GNOME_TERMINAL_SCREEN = /org/gnome/Terminal/screen/e04181fa_a5c3_4c8e_b70f_b09d4fa4b24e
+GNOME_TERMINAL_SCREEN = /org/gnome/Terminal/screen/eba0c92c_9438_4f53_a84d_cc39f88311e5
 # environment
 MAKELEVEL := 0
 # default
@@ -183,7 +183,7 @@ SNAP_ARCH = amd64
 # makefile
 .DEFAULT_GOAL := hw07-b0b36prp
 # environment
-SYSTEMD_EXEC_PID = 1762
+SYSTEMD_EXEC_PID = 1669
 # environment
 DISPLAY = :0
 # environment
@@ -286,7 +286,6 @@ SNAP_LIBRARY_PATH = /var/lib/snapd/lib/gl:/var/lib/snapd/lib/gl32:/var/lib/snapd
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
- 
 #  Last modified 2019-11-28 14:30:07
 #  File has been updated.
 #  Successfully updated.
@@ -346,14 +345,15 @@ zip:
 
 # No 'vpath' search paths.
 
+ 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 19 / storage = 152 B / avg = 8 B
-# current buf: size = 8162 B / used = 152 B / count = 19 / avg = 8 B
+# strcache buffers: 1 (0) / strings = 19 / storage = 170 B / avg = 8 B
+# current buf: size = 8162 B / used = 170 B / count = 19 / avg = 8 B
 
 # strcache performance: lookups = 30 / hit rate = 36%
 # hash-table stats:
 # Load=19/8192=0%, Rehash=0, Collisions=0/30=0%
-# Finished Make data base on Thu Nov 24 23:27:49 2022
+# Finished Make data base on Sun Nov 27 11:07:28 2022
 
  
