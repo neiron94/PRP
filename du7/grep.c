@@ -5,6 +5,7 @@
 #define TRUE 1
 #define START_SIZE 100
 #define ESC 27
+#define INVALID_INDEX -1
 
 
 enum {
@@ -268,7 +269,7 @@ _Bool find_pattern(char *line, const char *pattern, int *start, int *end, _Bool 
 _Bool find_common(char *line, const char *pattern, int *start, int *end) {
   /* Nonregular part of find_pattern function */
 
-  int new_start = -1;  // variable to insert in 'start' before exit
+  int new_start = INVALID_INDEX;  // variable to insert in 'start' before exit
   int matches = 0;  // number of matches with pattern
   int pat_len = my_strlen(pattern);
   int line_len = my_strlen(line);
@@ -308,8 +309,8 @@ _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
 
   int len_line = my_strlen(line);
   int len_pat = my_strlen(pattern);
-  int new_start = -1;
-  int new_end = -1;
+  int new_start = INVALID_INDEX;
+  int new_end = INVALID_INDEX;
 
   for (int i = *start, j = 0; i < len_line && j <= len_pat; i++) {
     if (j == len_pat) {
@@ -326,7 +327,7 @@ _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
       reg_exp(line, pattern[j], pattern[j + 1], &i, &j, &new_start, &new_end);
     }
     else if (line[i] == pattern[j]) {
-      if (new_start == -1) {
+      if (new_start == INVALID_INDEX) {
         new_start = i;
         new_end = i + 1;
       }
@@ -337,8 +338,8 @@ _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
     }
     else {
       j = 0;
-      new_start = -1;
-      new_end = -1;
+      new_start = INVALID_INDEX;
+      new_end = INVALID_INDEX;
     }
   }
 
@@ -348,7 +349,7 @@ _Bool find_regular(char *line, const char *pattern, int *start, int *end) {
 
 void reg_exp(char *line, char ch, char exp, int *i, int *j, int *new_start, int *new_end) {
   int count = 0;
-  if (*new_start == -1) {
+  if (*new_start == INVALID_INDEX) {
     *new_start = *i;
     *new_end = *i;
   }
@@ -365,8 +366,8 @@ void reg_exp(char *line, char ch, char exp, int *i, int *j, int *new_start, int 
   }
   else {
     *j = 0;
-    *new_start = -1;
-    *new_end = -1;
+    *new_start = INVALID_INDEX;
+    *new_end = INVALID_INDEX;
   }
 }
 
