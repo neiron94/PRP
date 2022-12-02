@@ -3,6 +3,7 @@
 #include "string.h"
 
 #include "queue.h"
+#include "queue.c"
 
 /* allocate new integer with value a and add it to the queue */
 void add(int a, queue_t *queue)

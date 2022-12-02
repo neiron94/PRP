@@ -11,7 +11,7 @@ typedef struct {
    int head;
    int tail;
    int n;
-   size_t size;
+   int size;
 } queue_t;
 
 /* creates a new queue with a given size */
